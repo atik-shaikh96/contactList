@@ -5,8 +5,16 @@ import CustomButton from '../../components/CustomButton';
 import CustomHeader from '../../components/CustomHeader';
 import FormModal from '../../components/FormModal';
 import ListItem from '../../components/ListItem';
+import NoDataFound from '../../components/NoDataFound';
+import {initialContacts} from '../../config/constants';
+import {globalStyles} from '../../config/styles';
 import LocalStorage from '../../services/LocalStorage';
-import {getUniqueId} from '../../services/utils';
+import {
+  handleAddItemToList,
+  handleDeleteItemFromList,
+  handleFetchPagination,
+  startingTenRecord,
+} from '../../services/utils';
 const dbHelper = new LocalStorage();
 
 const ContactList = () => {
@@ -16,30 +24,32 @@ const ContactList = () => {
   const [pageSize, setPageSize] = useState(10);
   const [isLoading, setLoading] = useState(false);
 
+  // Hook for first time initialize All contacts. If Contacts already exits the we are store in local state to display.
+  // Note: We are using two states here, Like we are using "contacts" state for storing all DB records(In future we can fetch from Mobile device or API).
+  // And Second state "displayContacts" we are using for listing Contacts by Pagination.
   useEffect(() => {
     const getContacts = async () => {
+      setLoading(true);
       let contactListFromDB = await dbHelper.getData('contactList');
-      setContacts(contactListFromDB);
-      let fetchedData =
-        contactListFromDB.length > 10
-          ? contactListFromDB.slice(0, 10)
-          : contactListFromDB;
-
-      setDisplayContacts(fetchedData);
+      if (contactListFromDB?.length > 0) {
+        updateContactList(contactListFromDB);
+      } else {
+        updateContactList(initialContacts);
+      }
+      setTimeout(() => {
+        setLoading(false);
+      }, 1000);
     };
     getContacts();
   }, []);
 
+  //This hooks we are using for updating our Local Storage(AsyncStorage/Local DB) by comparing Local State.
+  //Whenever Local State update, it will update Local DB.
   useEffect(() => {
     const handleUpdateDB = async () => {
       let contactListFromDB = await dbHelper.getData('contactList');
       if (!contacts.length && contactListFromDB?.length > 0) {
-        setContacts(contactListFromDB);
-        let fetchedData =
-          contactListFromDB.length > 10
-            ? contactListFromDB.slice(0, 10)
-            : contactListFromDB;
-        setDisplayContacts(fetchedData);
+        updateContactList(contactListFromDB);
       }
       if (contacts && contacts?.length !== contactListFromDB?.length) {
         dbHelper.setData('contactList', contacts);
@@ -48,8 +58,12 @@ const ContactList = () => {
     handleUpdateDB();
   }, [contacts]);
 
-  const renderListItem = (item, i) => {
-    return <ListItem item={item} itemIndex={i} handleDelete={handleDelete} />;
+  const updateContactList = contactListFromDB => {
+    setContacts(contactListFromDB);
+    // Here we are first showing 10 record because screen size is much big and showing 5 records only is not looking good.
+    // So for first time we are displaying 10 and then whenever user reached bottom of the list next 5 record will display.
+    let initialDisplayList = startingTenRecord(contactListFromDB);
+    setDisplayContacts(initialDisplayList);
   };
 
   const handleAddForm = () => {
@@ -61,12 +75,13 @@ const ContactList = () => {
   };
 
   const handleAdd = item => {
-    let newContacts = contacts && contacts.length > 0 ? [...contacts] : [];
-    let id = getUniqueId();
-    newContacts = [{...item, id}, ...newContacts];
-    setContacts(newContacts);
-    let newDisplayContacts = [{...item, id}, ...displayContacts];
-    setDisplayContacts(newDisplayContacts);
+    let {newList, newListToDisplay} = handleAddItemToList(
+      item,
+      contacts,
+      displayContacts,
+    );
+    setContacts(newList);
+    setDisplayContacts(newListToDisplay);
     handleVisibleModal(false);
   };
 
@@ -75,28 +90,24 @@ const ContactList = () => {
   };
 
   const handleDelete = deletedItem => {
-    let newContacts = [...contacts];
-    newContacts = newContacts?.filter((item, i) => item.id !== deletedItem.id);
-    setContacts(newContacts);
-    newContacts.slice(0, displayContacts.length - 1);
-    setDisplayContacts(newContacts);
+    let {newList, displayedList} = handleDeleteItemFromList(
+      deletedItem,
+      contacts,
+      displayContacts.length,
+    );
+    setContacts(newList);
+    setDisplayContacts(displayedList);
   };
 
-  const handleRemove = item => {
-    dbHelper.clearData('contactList');
-    setContacts([]);
-    setDisplayContacts([]);
-  };
-
+  //Pagination Event
   const handleFetch = () => {
-    let newPageSize = pageSize;
-    if (newPageSize < contacts.length) {
+    if (pageSize < contacts.length) {
       setLoading(true);
-      let newContacts = contacts.slice(newPageSize, newPageSize + 5);
-      if (newContacts) {
-        let newDisplayContacts = [...displayContacts, ...newContacts];
-        setDisplayContacts(newDisplayContacts);
-        setPageSize(newPageSize + 5);
+      let status = handleFetchPagination(pageSize, contacts, displayContacts);
+      if (status) {
+        let {newPageSize, newListToDisplay} = status;
+        setDisplayContacts(newListToDisplay);
+        setPageSize(newPageSize);
       }
       setTimeout(() => {
         setLoading(false);
@@ -104,16 +115,23 @@ const ContactList = () => {
     }
   };
 
+  const renderListItem = (item, i) => {
+    return <ListItem item={item} itemIndex={i} handleDelete={handleDelete} />;
+  };
+
   const renderList = () => {
-    return (
-      <View style={{marginVertical: 15}}>
-        <FlatList
-          style={{backgroundColor: 'white', height: '100%'}}
-          data={displayContacts}
-          renderItem={({item, index}) => renderListItem(item, index)}
-          onEndReached={() => handleFetch()}></FlatList>
-      </View>
-    );
+    if (displayContacts && displayContacts.length > 0) {
+      return (
+        <View style={{marginVertical: 15}}>
+          <FlatList
+            style={{backgroundColor: 'white', height: '100%'}}
+            data={displayContacts}
+            renderItem={({item, index}) => renderListItem(item, index)}
+            onEndReached={() => handleFetch()}></FlatList>
+        </View>
+      );
+    }
+    return <>{!isLoading ? <NoDataFound label="Contacts" /> : null}</>;
   };
 
   const renderModalForm = () => {
@@ -128,7 +146,7 @@ const ContactList = () => {
 
   const renderLoader = () => {
     if (isLoading) {
-      return <ActivityIndicator isLoading={isLoading} />;
+      return <ActivityIndicator isLoading={isLoading} position="bottom" />;
     }
   };
 
@@ -137,36 +155,9 @@ const ContactList = () => {
       <CustomHeader title="Team members" iconName="account-group-outline" />
       <View style={{flex: 1}}>{renderList()}</View>
       {!isLoading ? (
-        <>
-          {/* <View
-              style={{
-                position: 'absolute',
-                justifyContent: 'center',
-                alignItems: 'center',
-                bottom: 80,
-                left: 0,
-                right: 0,
-                margin: 30,
-                borderRadius: 10,
-              }}>
-              <CustomButton
-                title="Remove All Member"
-                handleSubmit={handleRemove}
-              />
-            </View> */}
-          <View
-            style={{
-              position: 'absolute',
-              justifyContent: 'center',
-              alignItems: 'center',
-              bottom: 30,
-              left: 0,
-              right: 0,
-              borderRadius: 10,
-            }}>
-            <CustomButton title="Add members" handleSubmit={handleAddForm} />
-          </View>
-        </>
+        <View style={globalStyles.buttonWrapper}>
+          <CustomButton title="Add members" handleSubmit={handleAddForm} />
+        </View>
       ) : null}
       {renderModalForm()}
       {renderLoader()}

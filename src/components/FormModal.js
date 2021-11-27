@@ -1,6 +1,7 @@
 import React, {useState} from 'react';
-import {View, TextInput, Button, Modal, Alert} from 'react-native';
+import {View, TextInput, Modal} from 'react-native';
 import {initialContactForm} from '../config/constants';
+import {globalStyles} from '../config/styles';
 import {contactValidation, duplicateRecord} from '../services/Validation';
 import CustomButton from './CustomButton';
 import ErrorText from './ErrorText';
@@ -39,42 +40,17 @@ const FormModal = props => {
 
   return (
     <Modal transparent style={{flex: 1}} visible={visibleModal}>
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: '#000000ee',
-          justifyContent: 'center',
-        }}>
-        <View
-          style={{
-            marginHorizontal: 40,
-            marginVertical: 100,
-            borderRadius: 20,
-            backgroundColor: '#fff',
-          }}>
+      <View style={globalStyles.modalStyle}>
+        <View style={globalStyles.modalContainer}>
           <TextInput
-            style={{
-              height: 50,
-              borderRadius: 10,
-              borderColor: '#ddd',
-              borderWidth: 1,
-              margin: 10,
-              padding: 5,
-            }}
+            style={globalStyles.textInput}
             placeholder="Enter Member Name"
             onChangeText={e => handleState('contactName', e)}
             value={contactName}
           />
           <ErrorText message={errors.contactName} />
           <TextInput
-            style={{
-              height: 50,
-              borderRadius: 10,
-              borderColor: '#ddd',
-              borderWidth: 1,
-              margin: 10,
-              padding: 5,
-            }}
+            style={globalStyles.textInput}
             placeholder="Enter Phone Number"
             onChangeText={e => handleState('phone', e)}
             value={phone}
@@ -87,7 +63,6 @@ const FormModal = props => {
               borderRadius: 20,
               margin: 20,
             }}>
-            {/* <Button onPress={handleAdd} title="Add Member" color="#841584" /> */}
             <CustomButton title="Save" handleSubmit={handleAdd} />
             <CustomButton title="Cancel" handleSubmit={handleCancel} />
           </View>

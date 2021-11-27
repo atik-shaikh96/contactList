@@ -1,6 +1,7 @@
 import React from 'react';
 import {View, Text, Alert} from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import {globalStyles} from '../config/styles';
 import {getIconLetters} from '../services/utils';
 import ContactListIcon from './ContactListIcon';
 
@@ -25,23 +26,8 @@ const ListItem = props => {
   let iconLetters = getIconLetters(item.contactName);
 
   return (
-    <View
-      style={{
-        padding: 10,
-        margin: 10,
-        backgroundColor: 'white',
-        borderRadius: 5,
-        borderWidth: 1,
-        borderColor: '#ddd',
-        elevation: 3,
-      }}>
-      <View
-        style={{
-          justifyContent: 'space-between',
-          flexDirection: 'row',
-          alignItems: 'center',
-          flex: 1,
-        }}>
+    <View style={globalStyles.listItemContainer}>
+      <View style={globalStyles.listItemContent}>
         <View style={{flex: 0.2}}>
           <ContactListIcon iconLetters={iconLetters} />
         </View>

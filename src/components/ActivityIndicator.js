@@ -1,10 +1,21 @@
 import React from 'react';
 import {View, ActivityIndicator} from 'react-native';
+import {globalStyles} from '../config/styles';
 
-const ActivityIndicatorLoader = ({isLoading}) => {
+const ActivityIndicatorLoader = props => {
+  let {isLoading, position} = props;
+  let indicatorStyle = null;
+  switch (position) {
+    case 'bottom':
+      indicatorStyle = globalStyles.absoluteBottom;
+      break;
+    default:
+      indicatorStyle = globalStyles.absoluteCenter;
+  }
+
   return (
-    <View style={{position: 'absolute', bottom: 30, left: 0, right: 0}}>
-      <ActivityIndicator size="large" color="#841584" />
+    <View style={indicatorStyle}>
+      <ActivityIndicator animating={isLoading} size="large" color="#841584" />
     </View>
   );
 };
